@@ -8,15 +8,25 @@ int main()
     InitWindow(width, height, "Dapper Dasher");
     SetTargetFPS(60);    
     
-    //acceleration pixels per frame per frame
-    const int gravity{1};
-    const int jumpVel{-20};
- 
-    // rect dimensions
-    const int rect_width{50};
-    const int rect_height{80};
+    //acceleration pixels per second
+    const int gravity{1000};
 
-    int posY{height - rect_height};
+    // pixels per second
+    const int jumpVel{-600};
+    
+    // SPRITE: 2D images
+    //to load the sprite
+    Texture2D character = LoadTexture("textures/scarfy.png");
+    Rectangle character_rect;
+    character_rect.width = character.width/6;
+    character_rect.height = character.height;
+    character_rect.x = 0;
+    character_rect.y = 0;
+
+    Vector2 character_pos;
+    character_pos.x = width/2 - character_rect.width/2;
+    character_pos.y = height - character.height;
+    
     int velocity{0}; //pixels per frame
 
     bool isInTheAir{};
@@ -25,12 +35,12 @@ int main()
     {
         BeginDrawing();
         ClearBackground(WHITE);
-
-        if(posY >= height - rect_height){ // checking wheter rect is on the ground
+        float dT = GetFrameTime();
+        if(character_pos.y >= height - character_rect.height){ // checking wheter rect is on the ground
             velocity = 0;
             isInTheAir = false;
         } else {
-            velocity += gravity;
+            velocity += gravity*dT;
             isInTheAir = true;
         }
 
@@ -38,16 +48,15 @@ int main()
             velocity += jumpVel;
         }
 
-        posY += velocity;
+        character_pos.y += velocity*dT;
 
         
-        DrawRectangle(width/2, posY, rect_width, rect_height, BLACK);
-
+        DrawTextureRec(character, character_rect, character_pos, WHITE);
         
         // CODE GOES HERE
         EndDrawing();
     }
-
+    UnloadTexture(character); // TO UNLOAD THE TEXTURE2D object
     CloseWindow();
 }
 
