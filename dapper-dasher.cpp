@@ -1,5 +1,15 @@
 #include "raylib.h"
 
+struct AnimationData
+{
+    Rectangle rect;
+    Vector2 pos;
+    int frame;
+    float updateTime;
+    float runningTime;
+};
+
+
 int main()
 {
     const int width = 750;
@@ -17,47 +27,45 @@ int main()
     // SPRITE: 2D images
     //to load the sprite
     Texture2D character = LoadTexture("textures/scarfy.png");
-    Rectangle character_rect;
-    Vector2 character_pos;
+    AnimationData characterData;
+    //rect
+    characterData.rect.width = character.width/6;
+    characterData.rect.height = character.height;
+    characterData.rect.x = 0;
+    characterData.rect.y = 0;
+    //pos
+    characterData.pos.x = width/2 - characterData.rect.width/2;
+    characterData.pos.y = height - characterData.rect.height;
+    //other properties
+    characterData.frame = 0;
+    characterData.updateTime = 1.0/12.0;
+    characterData.runningTime = 0.0;    
+    
 
-    character_rect.width = character.width/6; // is divided by 6 cause there are 6 squares. each square width will be the total width/6
-    character_rect.height = character.height;
-    character_rect.x = 0;
-    character_rect.y = 0; // to fix the rectangle in the first square from left to right.
-    
-    character_pos.x = width/2 - character_rect.width/2;
-    character_pos.y = height - character.height;
-    
     //Hazards variables
     Texture2D hazard = LoadTexture("textures/12_nebula_spritesheet.png");
-    Rectangle hazard_rect{0.0, 0.0, hazard.width/8, hazard.height/8};
-    Vector2 hazard_pos{width, height - hazard_rect.height};
 
-    int hazard_vel{-200}; // velocity of the hazard (pixels/second)
+    //Anim Data for 1st hazard 
+    AnimationData hazardData{
+        {0.0, 0.0, hazard.width/8, hazard.height/8},
+        {width + 300, height - hazard.height/8},
+        0,
+        1.0/12.0,
+        0.0
+    };
 
-    /*hazard_rect.width = hazard.width/8;
-    hazard_rect.height = hazard.height/8;
-    hazard_rect.x = 0;
-    hazard_rect.y = 0;
-
-    character_pos.x = width;
-    character_pos.y = height - character_rect.height;*/
-
-
-    int velocity{0}; //pixels per frame
-
-    bool isInTheAir{};
+    AnimationData hazardData2{
+        {0.0, 0.0, hazard.width/8, hazard.height/8}, //rect Rectangle
+        {width, height - hazard.height/8}, // pos   Vector2
+        0, // frame int
+        1.0/16.0, // updateTime float
+        0.0 //runningTime float
+    };
     
-    //Animations frame
-    int frame{};
-    int hazardFrame{};
-
-    //time before update the animation frmae
-    const float updateTime{1.0/12.0};
-    const float hazardUpdateTime{1.0/12.0};
-
-    float runningTime{};
-    float hazardRunningTime{};
+    bool isInTheAir{};
+    int velocity{0}; //pixels per frame
+    int hazard_vel{-200}; // velocity of the hazard (pixels/second)    
+    
 
     while (!WindowShouldClose())
     {
@@ -66,7 +74,7 @@ int main()
 
         float dT = GetFrameTime();
 
-        if(character_pos.y >= height - character_rect.height){ // checking wheter rect is on the ground
+        if(characterData.pos.y >= height - characterData.rect.height){ // checking wheter rect is on the ground
             velocity = 0;
             isInTheAir = false;
         } else {
@@ -79,44 +87,61 @@ int main()
         }
 
         //update hazard position
-        hazard_pos.x += hazard_vel * dT;
+        hazardData.pos.x += hazard_vel * dT;
 
+        //update 2ND hazard position
+        hazardData2.pos.x += hazard_vel * dT;
         //updating character position
-        character_pos.y += velocity * dT;
+        characterData.pos.y += velocity * dT;
 
         //Updating character animation frames
-        runningTime += dT;
+        characterData.runningTime += dT;
         if(!isInTheAir){
-            if (runningTime >= updateTime)
+            if (characterData.runningTime >= characterData.updateTime)
             {
-                runningTime = 0.0;
+                characterData.runningTime = 0.0;
                 //Update animation frame to move the rectangle to the next square of the sheet
-                character_rect.x = frame * character_rect.width;
-                frame++;
+                characterData.rect.x = characterData.frame * characterData.rect.width;
+                characterData.frame++;
 
-                if(frame > 5){
-                    frame = 0; // to maintain the loop in 6 frames cause there are 6 sprites in the sheet
+                if(characterData.frame > 5){
+                    characterData.frame = 0; // to maintain the loop in 6 frames cause there are 6 sprites in the sheet
                 }
             }
         }
         
         //update hazard animation frames        
-        hazardRunningTime += dT;
-        if(hazardRunningTime >= hazardUpdateTime){
-            hazardRunningTime = 0;
-            hazard_rect.x = hazardFrame * hazard_rect.width;
-            hazardFrame++;
+        hazardData.runningTime += dT;
+        if(hazardData.runningTime >= hazardData.updateTime){
+            hazardData.runningTime = 0;
+            hazardData.rect.x = hazardData.frame * hazardData.rect.width;
+            hazardData.frame++;
 
-            if(hazardFrame > 7){
-                hazardFrame = 0;
+            if(hazardData.frame > 7){
+                hazardData.frame = 0;
+            }
+        }
+
+        //update hazard animation frames        
+        hazardData2.runningTime += dT;
+        if(hazardData2.runningTime >= hazardData2.updateTime){
+            hazardData2.runningTime = 0;
+            hazardData2.rect.x = hazardData2.frame * hazardData2.rect.width;
+            hazardData2.frame++;
+
+            if(hazardData2.frame > 7){
+                hazardData2.frame = 0;
             }
         }
 
         //Drawing hazard
-        DrawTextureRec(hazard, hazard_rect, hazard_pos, WHITE);
+        DrawTextureRec(hazard, hazardData.rect, hazardData.pos, WHITE);
+
+        //Drawing 2nd hazard
+        DrawTextureRec(hazard, hazardData2.rect, hazardData2.pos, BLACK);
 
         //Draw Character
-        DrawTextureRec(character, character_rect, character_pos, WHITE);
+        DrawTextureRec(character, characterData.rect, characterData.pos, WHITE);
         
         // CODE GOES HERE
         EndDrawing();
