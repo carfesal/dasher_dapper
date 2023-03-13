@@ -12,10 +12,11 @@ struct AnimationData
 
 int main()
 {
-    const int width = 750;
-    const int height = 750;
+    int windowDimensions[2];
+    windowDimensions[0] = 750;
+    windowDimensions[1] = 750;    
 
-    InitWindow(width, height, "Dapper Dasher");
+    InitWindow(windowDimensions[0], windowDimensions[1], "Dapper Dasher");
     SetTargetFPS(60);    
     
     //acceleration pixels per second
@@ -34,8 +35,8 @@ int main()
     characterData.rect.x = 0;
     characterData.rect.y = 0;
     //pos
-    characterData.pos.x = width/2 - characterData.rect.width/2;
-    characterData.pos.y = height - characterData.rect.height;
+    characterData.pos.x = windowDimensions[0]/2 - characterData.rect.width/2;
+    characterData.pos.y = windowDimensions[1] - characterData.rect.height;
     //other properties
     characterData.frame = 0;
     characterData.updateTime = 1.0/12.0;
@@ -45,23 +46,21 @@ int main()
     //Hazards variables
     Texture2D hazard = LoadTexture("textures/12_nebula_spritesheet.png");
 
-    //Anim Data for 1st hazard 
-    AnimationData hazardData{
-        {0.0, 0.0, hazard.width/8, hazard.height/8},
-        {width + 300, height - hazard.height/8},
-        0,
-        1.0/12.0,
-        0.0
-    };
-
-    AnimationData hazardData2{
-        {0.0, 0.0, hazard.width/8, hazard.height/8}, //rect Rectangle
-        {width, height - hazard.height/8}, // pos   Vector2
-        0, // frame int
-        1.0/16.0, // updateTime float
-        0.0 //runningTime float
-    };
     
+    AnimationData hazards[3]{};
+
+    for(int i = 0; i < 3;i++){
+        hazards[i].rect.x = 0.0;
+        hazards[i].rect.y = 0.0;
+        hazards[i].rect.width = hazard.width/8;
+        hazards[i].rect.height = hazard.height/8;
+        hazards[i].pos.y = windowDimensions[1] - hazard.height/8;
+        hazards[i].pos.x = windowDimensions[0] + (i*300);
+        hazards[i].frame = 0;
+        hazards[i].runningTime = 0.0;
+        hazards[i].updateTime = 1.0/16.0;
+    }
+
     bool isInTheAir{};
     int velocity{0}; //pixels per frame
     int hazard_vel{-200}; // velocity of the hazard (pixels/second)    
@@ -74,7 +73,7 @@ int main()
 
         float dT = GetFrameTime();
 
-        if(characterData.pos.y >= height - characterData.rect.height){ // checking wheter rect is on the ground
+        if(characterData.pos.y >=  windowDimensions[1] - characterData.rect.height){ // checking wheter character rect is on the ground
             velocity = 0;
             isInTheAir = false;
         } else {
@@ -87,10 +86,10 @@ int main()
         }
 
         //update hazard position
-        hazardData.pos.x += hazard_vel * dT;
+        hazards[0].pos.x += hazard_vel * dT;
 
         //update 2ND hazard position
-        hazardData2.pos.x += hazard_vel * dT;
+        hazards[1].pos.x += hazard_vel * dT;
         //updating character position
         characterData.pos.y += velocity * dT;
 
@@ -111,34 +110,48 @@ int main()
         }
         
         //update hazard animation frames        
-        hazardData.runningTime += dT;
-        if(hazardData.runningTime >= hazardData.updateTime){
-            hazardData.runningTime = 0;
-            hazardData.rect.x = hazardData.frame * hazardData.rect.width;
-            hazardData.frame++;
+        hazards[0].runningTime += dT;
+        if(hazards[0].runningTime >= hazards[0].updateTime){
+            hazards[0].runningTime = 0;
+            hazards[0].rect.x = hazards[0].frame * hazards[0].rect.width;
+            hazards[0].frame++;
 
-            if(hazardData.frame > 7){
-                hazardData.frame = 0;
+            if(hazards[0].frame > 7){
+                hazards[0].frame = 0;
             }
         }
 
         //update hazard animation frames        
-        hazardData2.runningTime += dT;
-        if(hazardData2.runningTime >= hazardData2.updateTime){
-            hazardData2.runningTime = 0;
-            hazardData2.rect.x = hazardData2.frame * hazardData2.rect.width;
-            hazardData2.frame++;
+        hazards[1].runningTime += dT;
+        if(hazards[1].runningTime >= hazards[1].updateTime){
+            hazards[1].runningTime = 0;
+            hazards[1].rect.x = hazards[1].frame * hazards[1].rect.width;
+            hazards[1].frame++;
 
-            if(hazardData2.frame > 7){
-                hazardData2.frame = 0;
+            if(hazards[1].frame > 7){
+                hazards[1].frame = 0;
+            }
+        }
+
+        for(int i = 0; i < sizeof(hazards); i++){
+            //update hazard animation frames        
+            hazards[i].runningTime += dT;
+            if(hazards[i].runningTime >= hazards[i].updateTime){
+                hazards[i].runningTime = 0;
+                hazards[i].rect.x = hazards[i].frame * hazards[i].rect.width;
+                hazards[i].frame++;
+
+                if(hazards[i].frame > 7){
+                    hazards[i].frame = 0;
+                }
             }
         }
 
         //Drawing hazard
-        DrawTextureRec(hazard, hazardData.rect, hazardData.pos, WHITE);
+        DrawTextureRec(hazard, hazards[0].rect, hazards[0].pos, WHITE);
 
         //Drawing 2nd hazard
-        DrawTextureRec(hazard, hazardData2.rect, hazardData2.pos, BLACK);
+        DrawTextureRec(hazard, hazards[1].rect, hazards[1].pos, BLACK);
 
         //Draw Character
         DrawTextureRec(character, characterData.rect, characterData.pos, WHITE);
