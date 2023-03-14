@@ -9,12 +9,35 @@ struct AnimationData
     float runningTime;
 };
 
+bool isOnTheGround(AnimationData data, int windowHeight)
+{
+    return data.pos.y >= windowHeight - data.rect.height;
+}
+
+
+AnimationData updateAnimationData(AnimationData data, float deltaTime, int maxFrame)
+{
+    data.runningTime += deltaTime;
+
+    if(data.runningTime >= data.updateTime){
+        data.runningTime = 0.0;
+        //Update animation frame to move the rectangle to the next square of the sheet
+        data.rect.x = data.frame * data.rect.width;
+        data.frame++;
+        if (data.frame > maxFrame)
+        {
+            data.frame = 0;// to maintain the loop in maxFrames frames cause there are n  sprites in the sheet
+        }        
+    }
+
+    return data;
+}
 
 int main()
 {
     int windowDimensions[2];
-    windowDimensions[0] = 750;
-    windowDimensions[1] = 750;    
+    windowDimensions[0] = 512;
+    windowDimensions[1] = 340;    
 
     InitWindow(windowDimensions[0], windowDimensions[1], "Dapper Dasher");
     SetTargetFPS(60);    
@@ -45,11 +68,12 @@ int main()
 
     //Hazards variables
     Texture2D hazard = LoadTexture("textures/12_nebula_spritesheet.png");
-
     
-    AnimationData hazards[3]{};
 
-    for(int i = 0; i < 3;i++){
+    const int numberOfHazards = 6;
+    AnimationData hazards[numberOfHazards]{};
+
+    for(int i = 0; i < numberOfHazards;i++){
         hazards[i].rect.x = 0.0;
         hazards[i].rect.y = 0.0;
         hazards[i].rect.width = hazard.width/8;
@@ -65,15 +89,22 @@ int main()
     int velocity{0}; //pixels per frame
     int hazard_vel{-200}; // velocity of the hazard (pixels/second)    
     
+    Texture2D background = LoadTexture("textures/far-buildings.png");
+    float bgX{};
 
     while (!WindowShouldClose())
     {
+        const float dT = GetFrameTime();
+
         BeginDrawing();
         ClearBackground(WHITE);
 
-        float dT = GetFrameTime();
+        bgX -= 20 * dT;//to move 20 pixels per second
+        DrawTextureEx(background, {bgX,0.0}, 0.0, 2.0, WHITE);
 
-        if(characterData.pos.y >=  windowDimensions[1] - characterData.rect.height){ // checking wheter character rect is on the ground
+        
+
+        if(isOnTheGround(characterData, windowDimensions[1])){ // checking wheter character rect is on the ground
             velocity = 0;
             isInTheAir = false;
         } else {
@@ -85,73 +116,30 @@ int main()
             velocity += jumpVel;
         }
 
-        //update hazard position
-        hazards[0].pos.x += hazard_vel * dT;
 
-        //update 2ND hazard position
-        hazards[1].pos.x += hazard_vel * dT;
+        for(int i = 0; i < numberOfHazards; i++){
+            //update hazard position
+            hazards[i].pos.x += hazard_vel * dT;
+        }
+      
         //updating character position
         characterData.pos.y += velocity * dT;
 
-        //Updating character animation frames
-        characterData.runningTime += dT;
-        if(!isInTheAir){
-            if (characterData.runningTime >= characterData.updateTime)
-            {
-                characterData.runningTime = 0.0;
-                //Update animation frame to move the rectangle to the next square of the sheet
-                characterData.rect.x = characterData.frame * characterData.rect.width;
-                characterData.frame++;
-
-                if(characterData.frame > 5){
-                    characterData.frame = 0; // to maintain the loop in 6 frames cause there are 6 sprites in the sheet
-                }
-            }
+        //updatin character animation frame
+        if(!isInTheAir){            
+            characterData = updateAnimationData(characterData, dT, 5);
         }
+
+        //HAZARDS
+        for(int i = 0; i < numberOfHazards; i++){
+            hazards[i] = updateAnimationData(hazards[i], dT, 7);
+        }
+
         
-        //update hazard animation frames        
-        hazards[0].runningTime += dT;
-        if(hazards[0].runningTime >= hazards[0].updateTime){
-            hazards[0].runningTime = 0;
-            hazards[0].rect.x = hazards[0].frame * hazards[0].rect.width;
-            hazards[0].frame++;
-
-            if(hazards[0].frame > 7){
-                hazards[0].frame = 0;
-            }
+        for(int i = 0; i < numberOfHazards; i++){
+            //Drawing hazard
+            DrawTextureRec(hazard, hazards[i].rect, hazards[i].pos, WHITE);
         }
-
-        //update hazard animation frames        
-        hazards[1].runningTime += dT;
-        if(hazards[1].runningTime >= hazards[1].updateTime){
-            hazards[1].runningTime = 0;
-            hazards[1].rect.x = hazards[1].frame * hazards[1].rect.width;
-            hazards[1].frame++;
-
-            if(hazards[1].frame > 7){
-                hazards[1].frame = 0;
-            }
-        }
-
-        for(int i = 0; i < sizeof(hazards); i++){
-            //update hazard animation frames        
-            hazards[i].runningTime += dT;
-            if(hazards[i].runningTime >= hazards[i].updateTime){
-                hazards[i].runningTime = 0;
-                hazards[i].rect.x = hazards[i].frame * hazards[i].rect.width;
-                hazards[i].frame++;
-
-                if(hazards[i].frame > 7){
-                    hazards[i].frame = 0;
-                }
-            }
-        }
-
-        //Drawing hazard
-        DrawTextureRec(hazard, hazards[0].rect, hazards[0].pos, WHITE);
-
-        //Drawing 2nd hazard
-        DrawTextureRec(hazard, hazards[1].rect, hazards[1].pos, BLACK);
 
         //Draw Character
         DrawTextureRec(character, characterData.rect, characterData.pos, WHITE);
@@ -162,6 +150,8 @@ int main()
 
     UnloadTexture(character); // TO UNLOAD THE TEXTURE2D object
     UnloadTexture(hazard);
+    UnloadTexture(background);
+
     CloseWindow();
 }
 
