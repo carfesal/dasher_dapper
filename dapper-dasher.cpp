@@ -14,6 +14,16 @@ bool isOnTheGround(AnimationData data, int windowHeight)
     return data.pos.y >= windowHeight - data.rect.height;
 }
 
+float movingArea(Texture2D texture, float xGround, int pixels, float deltaTime)
+{
+    xGround -= pixels * deltaTime;//to move 80 pixels per second the foreground
+
+    if(xGround <= -texture.width * 2){ // 2 because we scale 2.0 the texture 
+        xGround = 0.0;
+    }
+
+    return xGround;
+}
 
 AnimationData updateAnimationData(AnimationData data, float deltaTime, int maxFrame)
 {
@@ -32,6 +42,8 @@ AnimationData updateAnimationData(AnimationData data, float deltaTime, int maxFr
 
     return data;
 }
+
+
 
 int main()
 {
@@ -70,7 +82,7 @@ int main()
     Texture2D hazard = LoadTexture("textures/12_nebula_spritesheet.png");
     
 
-    const int numberOfHazards = 6;
+    const int numberOfHazards = 3;
     AnimationData hazards[numberOfHazards]{};
 
     for(int i = 0; i < numberOfHazards;i++){
@@ -85,12 +97,19 @@ int main()
         hazards[i].updateTime = 1.0/16.0;
     }
 
+    float finishLine{ hazards[numberOfHazards - 1].pos.x };
     bool isInTheAir{};
     int velocity{0}; //pixels per frame
     int hazard_vel{-200}; // velocity of the hazard (pixels/second)    
     
     Texture2D background = LoadTexture("textures/far-buildings.png");
+    Texture2D foreground = LoadTexture("textures/foreground.png");
+    Texture2D midground = LoadTexture("textures/back-buildings.png");
+
     float bgX{};
+    float mgX{};
+    float fgX{};
+    bool collision{};
 
     while (!WindowShouldClose())
     {
@@ -99,10 +118,35 @@ int main()
         BeginDrawing();
         ClearBackground(WHITE);
 
-        bgX -= 20 * dT;//to move 20 pixels per second
-        DrawTextureEx(background, {bgX,0.0}, 0.0, 2.0, WHITE);
+        /*bgX -= 20 * dT;//to move 20 pixels per second the background
+        mgX -= 40 * dT;//to move 40 pixels per second the midround
+        fgX -= 80 * dT;//to move 80 pixels per second the foreground
 
-        
+        if(bgX <= -background.width*2){
+            bgX = 0.0;
+        }*/
+
+        bgX = movingArea(background, bgX, 20, dT);
+        mgX = movingArea(midground, mgX, 40, dT);
+        fgX = movingArea(foreground, fgX, 80, dT);
+
+        //Draw background
+        Vector2 bgPos1{bgX,0.0};    
+        DrawTextureEx(background, bgPos1, 0.0, 2.0, WHITE);
+        Vector2 bgPos2{bgX + background.width*2, 0.0};
+        DrawTextureEx(background, bgPos2, 0.0, 2.0, WHITE);
+
+        //Draw midground
+        Vector2 mgPos1{mgX,0.0};    
+        DrawTextureEx(midground, mgPos1, 0.0, 2.0, WHITE);
+        Vector2 mgPos2{mgX + background.width*2, 0.0};
+        DrawTextureEx(midground, mgPos2, 0.0, 2.0, WHITE);
+
+        //Draw foreground
+        Vector2 fgPos1{fgX, 0.0};    
+        DrawTextureEx(foreground, fgPos1, 0.0, 2.0, WHITE);
+        Vector2 fgPos2{fgX + foreground.width*2, 0.0};
+        DrawTextureEx(foreground, fgPos2, 0.0, 2.0, WHITE);
 
         if(isOnTheGround(characterData, windowDimensions[1])){ // checking wheter character rect is on the ground
             velocity = 0;
@@ -121,7 +165,10 @@ int main()
             //update hazard position
             hazards[i].pos.x += hazard_vel * dT;
         }
-      
+
+        // moving the finishline every frame
+        finishLine += hazard_vel * dT;
+
         //updating character position
         characterData.pos.y += velocity * dT;
 
@@ -134,15 +181,46 @@ int main()
         for(int i = 0; i < numberOfHazards; i++){
             hazards[i] = updateAnimationData(hazards[i], dT, 7);
         }
-
         
-        for(int i = 0; i < numberOfHazards; i++){
-            //Drawing hazard
-            DrawTextureRec(hazard, hazards[i].rect, hazards[i].pos, WHITE);
-        }
 
-        //Draw Character
-        DrawTextureRec(character, characterData.rect, characterData.pos, WHITE);
+        for(AnimationData data : hazards)
+        {
+            float pad{50};
+
+            Rectangle hazardRec{
+                data.pos.x + pad,
+                data.pos.y + pad,
+                data.rect.width - 2*pad,
+                data.rect.height - 2*pad
+            };
+
+            Rectangle characterRec{
+                characterData.pos.x,
+                characterData.pos.y,
+                characterData.rect.width,
+                characterData.rect.height
+            };
+
+            if (CheckCollisionRecs(hazardRec, characterRec))
+            {
+                collision = true;
+            }
+            
+        }
+        
+        if (collision){ // if there is collision the texture must not draw
+            DrawText("GAME OVER DOG!", windowDimensions[0]/4, windowDimensions[1]/2, 40, WHITE);                
+        }else if(characterData.pos.x >= finishLine){
+            DrawText("U WIN!", windowDimensions[0]/4, windowDimensions[1]/2, 40, WHITE);
+        } else {
+            for(int i = 0; i < numberOfHazards; i++){
+                //Drawing hazard
+                DrawTextureRec(hazard, hazards[i].rect, hazards[i].pos, WHITE);
+            }
+            //Draw Character
+            DrawTextureRec(character, characterData.rect, characterData.pos, WHITE);
+        }
+        
         
         // CODE GOES HERE
         EndDrawing();
@@ -151,6 +229,8 @@ int main()
     UnloadTexture(character); // TO UNLOAD THE TEXTURE2D object
     UnloadTexture(hazard);
     UnloadTexture(background);
+    UnloadTexture(foreground);
+    UnloadTexture(midground);
 
     CloseWindow();
 }
